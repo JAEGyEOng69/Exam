@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- namespace : xml파일은 여러개일 수 있음. 
+이를 구별하기 위한 식별 용도로 사용 -->
+<mapper namespace="kr.or.ddit.mapper.GalleryMapper">
+	<resultMap type="bookVO" id="bookMap">
+		<result property="bookId" column="BOOK_ID"/>
+		<result property="title" column="TITLE"/>
+		<result property="category" column="CATEGORY"/>
+		<result property="price" column="PRICE"/>
+		<result property="insertDate" column="INSERT_DATE"/>
+		<result property="content" column="CONTENT"
+			jdbcType="CLOB" javaType="java.lang.String"/>
+			
+		<collection property="attachVOList" resultMap="attachVOMap"></collection>
+	</resultMap>
+	
+	 <resultMap type="attachVO" id="attachVOMap">
+	 	<result property="userNo" column="USER_NO"/>
+	 	<result property="seq" column="SEQ"/>
+	 	<result property="filename" column="FILENAME"/>
+	 	<result property="filesize" column="FILESIZE"/>
+	 	<result property="regdate" column="REGDATE"/>
+	 </resultMap>
+	
+	<!-- 도서 상세
+		 CONTENT 컬럼.. 
+		 CLOB 타입의 데이터를 MyBatis를 이용해 처리할 때는 resultMap 태그를 만들고
+		 타입을 지정해줘야 함 CLOB타입 -> STRING 매핑
+		 java database connectivity의 type : CLOB
+		 java type : java.lang.Stirng
+	 -->
+	<select id="list" parameterType="bookVO" resultMap="bookMap">
+		SELECT A.BOOK_ID, A.TITLE, A.CATEGORY, A.PRICE, A.INSERT_DATE, A.CONTENT, 
+        B.USER_NO, B.SEQ, B.FILENAME, B.FILESIZE, B.REGDATE
+		FROM BOOK A INNER JOIN  ATTACH B ON(A.BOOK_ID = B.USER_NO)
+		WHERE A.BOOK_ID=#{bookId}
+	</select>
+		
+	<!-- 도서 목록 가져와서 select에 추가하기 -->
+	<select id="bookList" resultType="bookVO">
+		SELECT BOOK_ID, TITLE, CATEGORY, PRICE, INSERT_DATE 
+		FROM BOOK
+		ORDER BY TITLE ASC
+	
+	</select>
+	
+	<update id="updateAttach" parameterType="attachVO">
+		UPDATE  ATTACH
+		SET     FILENAME = #{filename}
+		WHERE USER_NO = #{userNo} AND SEQ = #{seq}
+	
+	</update>
+	
+	<delete id="deletePost" parameterType="attachVO">
+		DELETE 
+		FROM ATTACH
+		WHERE USER_NO = #{userNo}
+		AND SEQ = #{seq} 
+	</delete>
+	
+	<!-- 도서 검색  1대 N이면 resultMap 사용-->
+	<select id="searchBook" parameterType="bookVO" resultMap="bookMap">
+		WITH T AS(
+			SELECT A.BOOK_ID, A.TITLE, A.CATEGORY, A.PRICE, A.INSERT_DATE, A.CONTENT,
+			        B.USER_NO, B.SEQ, B.FILENAME, B.FILESIZE, B.REGDATE
+			FROM BOOK A LEFT OUTER JOIN ATTACH B ON(A.BOOK_ID = B.USER_No)
+		)
+		SELECT * FROM T
+		WHERE 1=1
+		AND(TITLE LIKE '%' ||#{title} || '%' OR CATEGORY LIKE '%' ||#{title} || '%' OR CONTENT LIKE '%' ||#{title} || '%' )
+	</select>
+	
+	<update id="uploadAjaxAction" parameterType="java.util.List" >
+		<foreach collection="list" item="attachVO" open="INSERT ALL" close="SELECT * FROM DUAL" separator=" ">
+		INTO ATTACH(USER_NO, SEQ,FILENAME, FILESIZE, REGDATE) 
+      	VALUES (#{attachVO.userNo}, #{attachVO.seq}, #{attachVO.filename} , #{attachVO.filesize}, SYSDATE)
+		</foreach>
+	</update>
+	<!-- 
+		파라미터 : String bookId
+		책의 이미지인 ATTACH 테이블의 다음seq번호 가져오기
+	 -->
+	<select id="getSeq" parameterType="String" resultType="int">
+	SELECT NVL(MAX(SEQ),0)+1 FROM ATTACH WHERE USER_NO = #{bookId}
+	</select>
+</mapper>
+
+
+
+
+
+
+
+
+
+

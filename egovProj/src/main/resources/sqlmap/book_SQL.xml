@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- namespace : xml파일은 여러개일 수 있음. 
+이를 구별하기 위한 식별 용도로 사용 -->
+<mapper namespace="kr.or.ddit.mapper.BookMapper">
+	<select id="list" resultType="bookVO">
+		SELECT BOOK_ID, TITLE, CATEGORY, PRICE, INSERT_DATE ,CONTENT
+		FROM BOOK
+	</select>
+	
+	<resultMap type="bookVO" id="bookMap">
+		<result property="bookId" column="BOOK_ID"/>
+		<result property="title" column="TITLE"/>
+		<result property="category" column="CATEGORY"/>
+		<result property="price" column="PRICE"/>
+		<result property="insertDate" column="INSERT_DATE"/>
+		<result property="content" column="CONTENT"
+			jdbcType="CLOB" javaType="java.lang.String"/>
+	</resultMap>
+	
+	<!-- 도서 상세
+		 CONTENT 컬럼..
+		 CLOB 타입의 데이터를 MyBatis를 이용해 처리할 때는 resultMap 태그를 만들고
+		 타입을 지정해줘야 함 CLOB타입 -> STRING 매핑
+		 java database connectivity의 type : CLOB
+		 java type : java.lang.Stirng
+	 -->
+	<select id="detail" parameterType="String" resultMap="bookMap">
+	  SELECT BOOK_ID, TITLE, CATEGORY, PRICE, INSERT_DATE ,CONTENT
+      FROM BOOK
+      WHERE BOOK_ID = #{bookId}
+	</select>
+	
+	<update id="update" parameterType="bookVO" >
+      UPDATE BOOK 
+      SET TITLE= #{title}, CATEGORY=#{category},PRICE=#{price},CONTENT=#{content}
+      WHERE BOOK_ID=#{bookId}
+   </update>
+   
+  <!-- 
+   before : BookVO [bookId=0, title=7번방의 개똥이, category=영화, price=12000, insertDate=null]
+   after : BookVO [bookId=13, title=7번방의 개똥이, category=영화, price=12000, insertDate=null]
+    -->
+   <!-- 도서 입력 
+      1) UPDATE => bookVO.bookId => 있음(1) => controller에서 
+            detail.jsp?bookId=1로  리다이렉트 시 parameter값을 이용하기
+            BookVO [bookId=2, title=검은개똥이2, category=소설2, 
+            price=12000, insertDate=Fri Nov 11 00:00:00 KST 2022]
+      2) INSERT => bookVO.bookId => 없음(null)
+            //BookVO [bookId=0, title=7번방의 개똥이, category=영화, 
+            price=12000, insertDate=null]
+   -->
+   <insert id="insert" parameterType="bookVO">
+      <selectKey order="AFTER" keyProperty="bookId" resultType="int">
+         SELECT MAX(BOOK_ID) FROM BOOK
+      </selectKey>
+      MERGE INTO BOOK A
+      USING DUAL ON(A.BOOK_ID = #{bookId})
+      WHEN MATCHED THEN 
+         UPDATE SET TITLE = #{title}
+             ,  CATEGORY = #{category}
+             ,  PRICE = #{price}
+             ,  CONTENT = #{content}
+             ,  INSERT_DATE = SYSDATE
+      WHEN NOT MATCHED THEN 
+         INSERT (BOOK_ID,TITLE,CATEGORY,PRICE,INSERT_DATE,CONTENT) 
+         VALUES ((SELECT NVL(MAX(BOOK_ID),0) + 1 FROM BOOK),#{title}
+         ,#{category},#{price},SYSDATE,#{content})
+   </insert>
+	
+	<delete id="delete" parameterType="int">
+		DELETE FROM BOOK
+		WHERE  BOOK_ID = #{bookId}
+	</delete>
+	
+</mapper>
+
+
+
+
+
+
+
+
+
+
